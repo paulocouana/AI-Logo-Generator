@@ -1,0 +1,5 @@
+{
+  "name": "AI Logo Generator",
+  "description": "An AI-powered logo generator that uses natural language to create unique company logos with Gemini (Nano Banana).",
+  "requestFramePermissions": []
+}
