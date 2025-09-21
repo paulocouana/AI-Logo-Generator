@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import type { LogoGenerationParams } from '../types';
 import { UploadIcon } from './icons/UploadIcon';
@@ -12,6 +11,9 @@ interface LogoGeneratorFormProps {
   onGenerate: () => void;
   isLoading: boolean;
 }
+
+const logoStyles = ['Minimalist', 'Vintage', 'Modern', 'Playful', 'Abstract', 'Corporate', 'Geometric', 'Hand-drawn'];
+
 
 export const LogoGeneratorForm: React.FC<LogoGeneratorFormProps> = ({
   params,
@@ -62,22 +64,8 @@ export const LogoGeneratorForm: React.FC<LogoGeneratorFormProps> = ({
   return (
     <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700 rounded-2xl p-6 md:p-8 space-y-6 h-full">
       <div>
-        <label htmlFor="prompt" className="block text-sm font-medium text-gray-300 mb-2">
-          1. Describe your logo
-        </label>
-        <textarea
-          id="prompt"
-          name="prompt"
-          rows={4}
-          className="w-full bg-gray-900/70 border border-gray-600 rounded-lg px-4 py-2 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-colors placeholder-gray-500"
-          placeholder="e.g., A majestic lion head with a futuristic crown"
-          value={params.prompt}
-          onChange={handleInputChange}
-        />
-      </div>
-      <div>
         <label htmlFor="companyName" className="block text-sm font-medium text-gray-300 mb-2">
-          2. Company Name
+          1. Company Name
         </label>
         <input
           type="text"
@@ -89,9 +77,44 @@ export const LogoGeneratorForm: React.FC<LogoGeneratorFormProps> = ({
           onChange={handleInputChange}
         />
       </div>
+       <div>
+        <label className="block text-sm font-medium text-gray-300 mb-2">
+          2. Choose a Style
+        </label>
+        <div className="flex flex-wrap gap-2">
+          {logoStyles.map((style) => (
+            <button
+              key={style}
+              onClick={() => setParams(prev => ({ ...prev, style }))}
+              type="button"
+              className={`px-3 py-1.5 text-sm font-semibold rounded-lg transition-colors ${
+                params.style === style
+                  ? 'bg-purple-600 text-white shadow-md'
+                  : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+              }`}
+            >
+              {style}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div>
+        <label htmlFor="prompt" className="block text-sm font-medium text-gray-300 mb-2">
+          3. Describe your logo concept
+        </label>
+        <textarea
+          id="prompt"
+          name="prompt"
+          rows={3}
+          className="w-full bg-gray-900/70 border border-gray-600 rounded-lg px-4 py-2 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-colors placeholder-gray-500"
+          placeholder="e.g., A majestic lion head"
+          value={params.prompt}
+          onChange={handleInputChange}
+        />
+      </div>
       <div>
         <span className="block text-sm font-medium text-gray-300 mb-2">
-          3. Upload a base image (Optional)
+          4. Upload a base image (Optional)
         </span>
         <div className="mt-2 flex justify-center rounded-lg border border-dashed border-gray-600 px-6 py-10">
             {!imagePreview ? (

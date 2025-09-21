@@ -8,12 +8,14 @@ if (!process.env.API_KEY) {
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 function constructPrompt(params: LogoGenerationParams): string {
-    const { prompt, companyName, baseImage } = params;
+    const { prompt, companyName, baseImage, style } = params;
+    const styleAndConcept = `The desired style is "${style}", and the logo concept is: "${prompt}".`;
+
     if (baseImage) {
         return `
             Act as a professional logo designer. 
             Refine the provided image into a logo for a company named "${companyName}".
-            The desired style is: "${prompt}".
+            ${styleAndConcept}
             If it makes sense, elegantly integrate the company name "${companyName}" into the logo.
             Make the final logo look professional, polished, and modern. Output only the final logo image.
         `;
@@ -21,7 +23,7 @@ function constructPrompt(params: LogoGenerationParams): string {
     return `
         Act as a professional logo designer. 
         Create a logo from scratch for a company named "${companyName}".
-        The logo concept is: "${prompt}".
+        ${styleAndConcept}
         The logo must be a simple, modern, memorable icon in a vector style.
         It must be on a clean, solid, light-colored background suitable for a logo presentation. Do not use a transparent background. Output only the final logo image.
     `;

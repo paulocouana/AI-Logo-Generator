@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback } from 'react';
 import { Header } from './components/Header';
 import { LogoGeneratorForm } from './components/LogoGeneratorForm';
@@ -9,8 +8,9 @@ import { fileToBase64 } from './utils/fileUtils';
 
 const App: React.FC = () => {
   const [generationParams, setGenerationParams] = useState<Omit<LogoGenerationParams, 'baseImage'>>({
-    prompt: 'A minimalist, abstract icon representing speed and innovation.',
+    prompt: 'a majestic lion head with a futuristic crown',
     companyName: 'Synergize',
+    style: 'Modern',
   });
   const [baseImageFile, setBaseImageFile] = useState<File | null>(null);
   const [generatedLogo, setGeneratedLogo] = useState<LogoGenerationResult | null>(null);
