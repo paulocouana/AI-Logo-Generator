@@ -1,4 +1,4 @@
-import { GoogleGenAI, Modality, Part } from "@google/genai";
+import { GoogleGenAI, Modality, Part, GenerateContentResponse } from "@google/genai";
 import type { LogoGenerationParams, LogoGenerationResult } from '../types';
 
 if (!process.env.API_KEY) {
@@ -6,6 +6,39 @@ if (!process.env.API_KEY) {
 }
 
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+
+const parseGenerationResult = (result: GenerateContentResponse): LogoGenerationResult => {
+    let imageUrl = '';
+    let text = 'No descriptive text was generated.';
+
+    if (result.candidates?.[0]?.content?.parts) {
+        for (const part of result.candidates[0].content.parts) {
+            if (part.inlineData) {
+                const { mimeType, data } = part.inlineData;
+                imageUrl = `data:${mimeType};base64,${data}`;
+            } else if (part.text) {
+                text = part.text;
+            }
+        }
+    }
+
+    if (!imageUrl) {
+        throw new Error('The AI did not generate an image. Please try refining your prompt.');
+    }
+
+    return { imageUrl, text };
+}
+
+const dataUrlToBase64 = (dataUrl: string): { mimeType: string; data: string } => {
+    const [header, base64Data] = dataUrl.split(',');
+    const mimeTypeMatch = header.match(/:(.*?);/);
+    if (!mimeTypeMatch || !mimeTypeMatch[1]) {
+        throw new Error("Invalid data URL");
+    }
+    const mimeType = mimeTypeMatch[1];
+    return { mimeType, data: base64Data };
+};
+
 
 function constructPrompt(params: LogoGenerationParams): string {
     const { prompt, companyName, baseImage, style } = params;
@@ -50,23 +83,47 @@ export const generateLogo = async (params: LogoGenerationParams): Promise<LogoGe
         }
     });
     
-    let imageUrl = '';
-    let text = 'No descriptive text was generated.';
+    return parseGenerationResult(result);
+};
 
-    if (result.candidates && result.candidates[0] && result.candidates[0].content && result.candidates[0].content.parts) {
-        for (const part of result.candidates[0].content.parts) {
-            if (part.inlineData) {
-                const { mimeType, data } = part.inlineData;
-                imageUrl = `data:${mimeType};base64,${data}`;
-            } else if (part.text) {
-                text = part.text;
+export const generateLogoVariations = async (
+    baseParams: LogoGenerationParams,
+    originalLogo: LogoGenerationResult
+): Promise<LogoGenerationResult[]> => {
+    const NUM_VARIATIONS = 3;
+    const originalLogoImage = dataUrlToBase64(originalLogo.imageUrl);
+
+    const prompt = `
+        Act as a professional logo designer.
+        Generate a variation of the provided logo for the company "${baseParams.companyName}".
+        The original concept was "${baseParams.prompt}" in a "${baseParams.style}" style.
+        Create a new version that is clearly related to the original but explores a different composition, slightly different color palette, or alternative iconography.
+        Maintain the professional, polished, and modern feel.
+        Output only the final logo image.
+    `;
+
+    const parts: Part[] = [
+        {
+            inlineData: {
+                mimeType: originalLogoImage.mimeType,
+                data: originalLogoImage.data,
+            },
+        },
+        { text: prompt }
+    ];
+
+    const generateSingleVariation = async (): Promise<LogoGenerationResult> => {
+        const result = await ai.models.generateContent({
+            model: 'gemini-2.5-flash-image-preview',
+            contents: { parts },
+            config: {
+                responseModalities: [Modality.IMAGE, Modality.TEXT],
             }
-        }
-    }
+        });
+        return parseGenerationResult(result);
+    };
 
-    if (!imageUrl) {
-        throw new Error('The AI did not generate an image. Please try refining your prompt.');
-    }
-
-    return { imageUrl, text };
+    const variationPromises = Array.from({ length: NUM_VARIATIONS }, () => generateSingleVariation());
+    
+    return Promise.all(variationPromises);
 };

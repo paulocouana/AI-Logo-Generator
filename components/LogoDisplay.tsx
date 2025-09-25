@@ -1,12 +1,16 @@
-
 import React from 'react';
 import type { LogoGenerationResult } from '../types';
 import { DownloadIcon } from './icons/DownloadIcon';
+import { SparklesIcon } from './icons/SparklesIcon';
 
 interface LogoDisplayProps {
   logo: LogoGenerationResult | null;
   isLoading: boolean;
   error: string | null;
+  variations: LogoGenerationResult[] | null;
+  isGeneratingVariations: boolean;
+  variationsError: string | null;
+  onGenerateVariations: () => void;
 }
 
 const LoadingSkeleton: React.FC = () => (
@@ -27,7 +31,24 @@ const Placeholder: React.FC = () => (
     </div>
 );
 
-export const LogoDisplay: React.FC<LogoDisplayProps> = ({ logo, isLoading, error }) => {
+const VariationSkeleton: React.FC = () => (
+    <div className="mt-6 grid grid-cols-2 md:grid-cols-3 gap-4">
+        {[...Array(3)].map((_, i) => (
+            <div key={i} className="aspect-square bg-gray-700 rounded-lg animate-pulse"></div>
+        ))}
+    </div>
+);
+
+
+export const LogoDisplay: React.FC<LogoDisplayProps> = ({ 
+    logo, 
+    isLoading, 
+    error, 
+    variations, 
+    isGeneratingVariations, 
+    variationsError, 
+    onGenerateVariations 
+}) => {
   return (
     <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700 rounded-2xl flex items-center justify-center min-h-[400px] lg:min-h-full">
       {isLoading && <LoadingSkeleton />}
@@ -61,6 +82,59 @@ export const LogoDisplay: React.FC<LogoDisplayProps> = ({ logo, isLoading, error
                     <p className="text-gray-400 text-sm italic">"{logo.text}"</p>
                 </div>
             )}
+            <div className="mt-8 border-t border-gray-700 pt-8">
+                 <div className="text-center">
+                    <button
+                        onClick={onGenerateVariations}
+                        disabled={isGeneratingVariations}
+                        className="inline-flex items-center justify-center gap-2 bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-5 rounded-lg transition-all duration-300 ease-in-out disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900 focus:ring-purple-500"
+                    >
+                        {isGeneratingVariations ? (
+                            <>
+                                <svg className="animate-spin -ml-1 mr-2 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                Generating...
+                            </>
+                        ) : (
+                            <>
+                                <SparklesIcon className="w-5 h-5" />
+                                Generate Variations
+                            </>
+                        )}
+                    </button>
+                </div>
+
+                {isGeneratingVariations && <VariationSkeleton />}
+                {variationsError && (
+                    <div className="mt-6 text-center text-red-400 p-4 bg-red-900/20 rounded-lg">
+                        <p className="font-semibold">Failed to generate variations.</p>
+                        <p className="text-sm">{variationsError}</p>
+                    </div>
+                )}
+                {variations && (
+                    <div className="mt-6">
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                            {variations.map((variation, index) => (
+                                <div key={index} className="relative group aspect-square">
+                                    <img src={variation.imageUrl} alt={`Logo Variation ${index + 1}`} className="w-full h-full object-contain rounded-lg bg-gray-900/50 p-1" />
+                                    <div className="absolute inset-0 bg-black bg-opacity-60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded-lg">
+                                        <a
+                                            href={variation.imageUrl}
+                                            download={`logo-variation-${index + 1}-${Date.now()}.png`}
+                                            className="inline-flex items-center gap-2 bg-white text-gray-900 font-semibold py-2 px-4 rounded-lg hover:bg-gray-200 transition-colors text-sm"
+                                        >
+                                            <DownloadIcon className="w-4 h-4" />
+                                            Download
+                                        </a>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+            </div>
         </div>
       )}
     </div>

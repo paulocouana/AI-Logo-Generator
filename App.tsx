@@ -2,7 +2,7 @@ import React, { useState, useCallback } from 'react';
 import { Header } from './components/Header';
 import { LogoGeneratorForm } from './components/LogoGeneratorForm';
 import { LogoDisplay } from './components/LogoDisplay';
-import { generateLogo } from './services/geminiService';
+import { generateLogo, generateLogoVariations } from './services/geminiService';
 import type { LogoGenerationParams, LogoGenerationResult } from './types';
 import { fileToBase64 } from './utils/fileUtils';
 
@@ -16,11 +16,16 @@ const App: React.FC = () => {
   const [generatedLogo, setGeneratedLogo] = useState<LogoGenerationResult | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [variations, setVariations] = useState<LogoGenerationResult[] | null>(null);
+  const [isGeneratingVariations, setIsGeneratingVariations] = useState<boolean>(false);
+  const [variationsError, setVariationsError] = useState<string | null>(null);
 
   const handleGenerate = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     setGeneratedLogo(null);
+    setVariations(null);
+    setVariationsError(null);
 
     try {
       let baseImagePayload: LogoGenerationParams['baseImage'] | undefined = undefined;
@@ -41,6 +46,31 @@ const App: React.FC = () => {
       setIsLoading(false);
     }
   }, [generationParams, baseImageFile]);
+
+  const handleGenerateVariations = useCallback(async () => {
+    if (!generatedLogo) return;
+
+    setIsGeneratingVariations(true);
+    setVariationsError(null);
+    setVariations(null);
+
+    try {
+       const baseImagePayload: LogoGenerationParams['baseImage'] | undefined = baseImageFile ? {
+        mimeType: baseImageFile.type,
+        data: await fileToBase64(baseImageFile),
+      } : undefined;
+
+      const fullParams = { ...generationParams, baseImage: baseImagePayload };
+      const results = await generateLogoVariations(fullParams, generatedLogo);
+      setVariations(results);
+    } catch (err) {
+      console.error(err);
+      setVariationsError(err instanceof Error ? err.message : 'An unknown error occurred.');
+    } finally {
+      setIsGeneratingVariations(false);
+    }
+  }, [generatedLogo, generationParams, baseImageFile]);
+
 
   return (
     <div className="bg-gray-900 text-white min-h-screen font-sans antialiased">
@@ -69,6 +99,10 @@ const App: React.FC = () => {
               logo={generatedLogo}
               isLoading={isLoading}
               error={error}
+              variations={variations}
+              isGeneratingVariations={isGeneratingVariations}
+              variationsError={variationsError}
+              onGenerateVariations={handleGenerateVariations}
             />
           </div>
         </main>
