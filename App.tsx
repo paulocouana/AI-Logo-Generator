@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { Header } from './components/Header';
 import { LogoGeneratorForm } from './components/LogoGeneratorForm';
 import { LogoDisplay } from './components/LogoDisplay';
@@ -6,19 +6,91 @@ import { generateLogo, generateLogoVariations } from './services/geminiService';
 import type { LogoGenerationParams, LogoGenerationResult } from './types';
 import { fileToBase64 } from './utils/fileUtils';
 
+export type HistoryState = {
+  params: Omit<LogoGenerationParams, 'baseImage'>;
+  baseImageFile: File | null;
+};
+
+const areFilesEqual = (file1: File | null, file2: File | null): boolean => {
+    if (file1 === null && file2 === null) return true;
+    if (file1 === null || file2 === null) return false;
+    return file1.name === file2.name && file1.size === file2.size && file1.lastModified === file2.lastModified;
+};
+
+
 const App: React.FC = () => {
-  const [generationParams, setGenerationParams] = useState<Omit<LogoGenerationParams, 'baseImage'>>({
-    prompt: 'a majestic lion head with a futuristic crown',
-    companyName: 'Synergize',
-    style: 'Modern',
-  });
-  const [baseImageFile, setBaseImageFile] = useState<File | null>(null);
+  const initialState: HistoryState = {
+    params: {
+      prompt: 'a majestic lion head with a futuristic crown',
+      companyName: 'Synergize',
+      style: 'Modern',
+    },
+    baseImageFile: null,
+  };
+
+  const [history, setHistory] = useState<HistoryState[]>([initialState]);
+  const [historyIndex, setHistoryIndex] = useState(0);
+
+  const { params: generationParams, baseImageFile } = history[historyIndex];
+  const canUndo = historyIndex > 0;
+  const canRedo = historyIndex < history.length - 1;
+
   const [generatedLogo, setGeneratedLogo] = useState<LogoGenerationResult | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [variations, setVariations] = useState<LogoGenerationResult[] | null>(null);
   const [isGeneratingVariations, setIsGeneratingVariations] = useState<boolean>(false);
   const [variationsError, setVariationsError] = useState<string | null>(null);
+
+  const updateStateAndHistory = useCallback((action: React.SetStateAction<HistoryState>) => {
+    const currentState = history[historyIndex];
+    const newState = typeof action === 'function' ? action(currentState) : action;
+
+    if (
+        JSON.stringify(currentState.params) === JSON.stringify(newState.params) &&
+        areFilesEqual(currentState.baseImageFile, newState.baseImageFile)
+    ) {
+        return;
+    }
+
+    const newHistory = history.slice(0, historyIndex + 1);
+    newHistory.push(newState);
+    setHistory(newHistory);
+    setHistoryIndex(newHistory.length - 1);
+  }, [history, historyIndex]);
+
+  const handleUndo = useCallback(() => {
+    if (canUndo) {
+        setHistoryIndex(i => i - 1);
+    }
+  }, [canUndo]);
+
+  const handleRedo = useCallback(() => {
+    if (canRedo) {
+        setHistoryIndex(i => i + 1);
+    }
+  }, [canRedo]);
+  
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+        const isModKey = event.metaKey || event.ctrlKey;
+        if (isModKey && event.key.toLowerCase() === 'z') {
+            event.preventDefault();
+            if (event.shiftKey) {
+                handleRedo();
+            } else {
+                handleUndo();
+            }
+        }
+        if (isModKey && event.key.toLowerCase() === 'y') {
+            event.preventDefault();
+            handleRedo();
+        }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [handleUndo, handleRedo]);
+
 
   const handleGenerate = useCallback(async () => {
     setIsLoading(true);
@@ -89,11 +161,14 @@ const App: React.FC = () => {
           <div className="mt-12 grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
             <LogoGeneratorForm
               params={generationParams}
-              setParams={setGenerationParams}
               baseImageFile={baseImageFile}
-              setBaseImageFile={setBaseImageFile}
+              onStateChange={updateStateAndHistory}
               onGenerate={handleGenerate}
               isLoading={isLoading}
+              onUndo={handleUndo}
+              onRedo={handleRedo}
+              canUndo={canUndo}
+              canRedo={canRedo}
             />
             <LogoDisplay
               logo={generatedLogo}
